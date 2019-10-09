@@ -3,11 +3,14 @@ numpy
 opencv-python
 torch >= 1.2
 matplotlib
+Cython
 pycocotools
 tqdm
 tb-nightly
 future
 Pillow
+onnx
+onnxruntime
 
 # Equivalent conda commands ----------------------------------------------------
 # conda update -n base -c defaults conda
