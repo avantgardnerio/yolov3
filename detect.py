@@ -4,7 +4,10 @@ from sys import platform
 from models import *  # set ONNX_EXPORT in models.py
 from utils.datasets import *
 from utils.utils import *
+import re
 
+file = open("detections.csv", 'w')
+file.write("time,people\n")
 
 def detect(save_txt=False, save_img=False):
     img_size = (320, 192) if ONNX_EXPORT else opt.img_size  # (320, 192) or (416, 256) or (608, 352) for (height, width)
@@ -63,6 +66,8 @@ def detect(save_txt=False, save_img=False):
     for path, img, im0s, vid_cap in dataset:
         t = time.time()
 
+        timeStr = re.match(".*T([^\\.]*)", path).groups()[0].replace("-", ":")
+
         # Get detections
         img = torch.from_numpy(img).to(device)
         if img.ndimension() == 3:
@@ -80,6 +85,7 @@ def detect(save_txt=False, save_img=False):
 
             save_path = str(Path(out) / Path(p).name)
             s += '%gx%g ' % img.shape[2:]  # print string
+            people = 0
             if det is not None and len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
@@ -91,14 +97,15 @@ def detect(save_txt=False, save_img=False):
 
                 # Write results
                 for *xyxy, conf, _, cls in det:
-                    if save_txt:  # Write to file
-                        with open(save_path + '.txt', 'a') as file:
-                            file.write(('%g ' * 6 + '\n') % (*xyxy, cls, conf))
-
                     if save_img or view_img:  # Add bbox to image
-                        label = '%s %.2f' % (classes[int(cls)], conf)
+                        type = classes[int(cls)]
+                        label = '%s %.2f' % (type, conf)
+                        if type == "person":
+                            people += 1
                         plot_one_box(xyxy, im0, label=label, color=colors[int(cls)])
 
+            file.write("%s,%d\n" % (timeStr, people))
+            file.flush()
             print('%sDone. (%.3fs)' % (s, time.time() - t))
 
             # Stream results
@@ -148,3 +155,4 @@ if __name__ == '__main__':
 
     with torch.no_grad():
         detect()
+    file.close()
