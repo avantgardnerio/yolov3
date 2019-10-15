@@ -7,7 +7,7 @@ from utils.utils import *
 import re
 
 file = open("detections.csv", 'w')
-file.write("time,people\n")
+file.write("time,90,80,70,60,50,40,30,20,10\n")
 
 def detect(save_txt=False, save_img=False):
     img_size = (320, 192) if ONNX_EXPORT else opt.img_size  # (320, 192) or (416, 256) or (608, 352) for (height, width)
@@ -85,7 +85,7 @@ def detect(save_txt=False, save_img=False):
 
             save_path = str(Path(out) / Path(p).name)
             s += '%gx%g ' % img.shape[2:]  # print string
-            people = 0
+            people = {}
             if det is not None and len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
@@ -101,10 +101,15 @@ def detect(save_txt=False, save_img=False):
                         type = classes[int(cls)]
                         label = '%s %.2f' % (type, conf)
                         if type == "person":
-                            people += 1
-                        plot_one_box(xyxy, im0, label=label, color=colors[int(cls)])
+                            for threshold in range(90, 0, -10):
+                                if conf.item() * 100 > threshold:
+                                    people[str(threshold)] = people.get(str(threshold), 0) + 1
+                            plot_one_box(xyxy, im0, label=label, color=colors[int(cls)])
 
-            file.write("%s,%d\n" % (timeStr, people))
+            line = f"{timeStr},"
+            for threshold in range(90, 0, -10):
+                line += f"{people.get(str(threshold), 0)},"
+            file.write(f"{line}\n")
             file.flush()
             print('%sDone. (%.3fs)' % (s, time.time() - t))
 
@@ -144,7 +149,7 @@ if __name__ == '__main__':
     parser.add_argument('--source', type=str, default='data/samples', help='source')  # input file/folder, 0 for webcam
     parser.add_argument('--output', type=str, default='output', help='output folder')  # output folder
     parser.add_argument('--img-size', type=int, default=416, help='inference size (pixels)')
-    parser.add_argument('--conf-thres', type=float, default=0.3, help='object confidence threshold')
+    parser.add_argument('--conf-thres', type=float, default=0.1, help='object confidence threshold')
     parser.add_argument('--nms-thres', type=float, default=0.5, help='iou threshold for non-maximum suppression')
     parser.add_argument('--fourcc', type=str, default='mp4v', help='output video codec (verify ffmpeg support)')
     parser.add_argument('--half', action='store_true', help='half precision FP16 inference')
